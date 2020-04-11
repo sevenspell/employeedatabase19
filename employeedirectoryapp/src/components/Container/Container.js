@@ -2,37 +2,118 @@ import React, { Component } from 'react';
 import Header from '../Header/Header';
 import Wrapper from '../Wrapper/Wrapper';
 import SearchForm from '../SearchForm/SearchForm';
-import EmployeeTable from '../EmployeeTable/EmployeeTable';
 import API from '../../utils/API'
-import TableTitle from '../TableTitle/TableTitle';
+import Table from '../Table/Table';
 
 class Container extends Component {
+
     state = {
-        results: [],
-        filteredResults: [],
-        search: ""
+        employees: [],
+        filteredEmployees: [],
+        search: "",
+        currentSort: 'down'
     };
 
     componentDidMount() {
         API.searchAll()
             .then(res => this.setState({
-                results: res.data.results,
-                filteredResults: res.data.results,
+                employees: res.data.results,
+                filteredEmployees: res.data.results,
+
             }))
             .catch(err => console.log(err))
     }
 
-
     handleInputChange = event => {
-        const value = event.target.value;
-        const name = event.target.name;
-        this.setState({
-            [name]: value
-        })
+        this.setState({ search: event.target.value }, () => this.handleFilter());
     }
 
 
+    handleFilter = () => {
+        let filteredEmployees = this.state.employees.filter((employee) => {
+            let fullName = (employee.name.first + " " + employee.name.last).toLowerCase();
+            return (fullName.includes(this.state.search));
+        })
+        this.setState({ filteredEmployees: filteredEmployees })
+    }
+
+    sortUp(key) {
+
+        if (key === 'name') {
+            return function (a, b) {
+                let afullName = a.name.first + ' ' + a.name.last;
+                let bfullName = b.name.first + ' ' + b.name.last;
+                if (afullName < bfullName) return -1;
+                if (afullName > bfullName) return 1;
+                return 0;
+            };
+        }
+
+        if (key === 'dob') {
+            return function (a, b) {
+                let aDOB = a.dob.date;
+                let bDOB = b.dob.date;
+                if (aDOB < bDOB) return -1;
+                if (aDOB > bDOB) return 1;
+                return 0;
+            };
+        }
+
+        return function (a, b) {
+            if (a[key] < b[key]) return -1;
+            if (a[key] > b[key]) return 1;
+            return 0;
+        };
+    }
+
+    sortDown(key) {
+
+        if (key === 'name') {
+            return function (a, b) {
+                let afullName = a.name.first + ' ' + a.name.last;
+                let bfullName = b.name.first + ' ' + b.name.last;
+                if (afullName > bfullName) return -1;
+                if (afullName < bfullName) return 1;
+                return 0;
+            };
+        }
+
+        if (key === 'dob') {
+            return function (a, b) {
+                let aDOB = a.dob.date;
+                let bDOB = b.dob.date;
+                if (aDOB > bDOB) return -1;
+                if (aDOB < bDOB) return 1;
+                return 0;
+            };
+        }
+
+        return function (a, b) {
+            if (a[key] > b[key]) return -1;
+            if (a[key] < b[key]) return 1;
+            return 0;
+        };
+    }
+
+    sortBy = event => {
+        const currentSort = this.state.currentSort;
+
+        if (currentSort === 'down') {
+            let employeesCopy = [...this.state.filteredEmployees];
+            employeesCopy.sort(this.sortUp(event.target.getAttribute('data-key')));
+            this.setState({ filteredEmployees: employeesCopy });
+            this.setState({ currentSort: 'up' })
+
+        } else if (currentSort === 'up') {
+            let employeesCopy = [...this.state.filteredEmployees];
+            employeesCopy.sort(this.sortDown(event.target.getAttribute('data-key')));
+            this.setState({ filteredEmployees: employeesCopy });
+            this.setState({ currentSort: 'down' })
+        }
+    }
+
     render() {
+
         return (
             <Wrapper>
                 <Header />
@@ -40,19 +121,10 @@ class Container extends Component {
                     value={this.state.search}
                     handleInputChange={this.handleInputChange}
                 />
-                <TableTitle>
-                    {this.state.results.map(results => (
-                        <EmployeeTable
-                            key={results.login.uuid}
-                            id={results.login.uuid}
-                            src={results.picture}
-                            name={results.name}
-                            email={results.email}
-                            phone={results.cell}
-                            dob={results.dob} 
-                        />
-                    ))}
-                </TableTitle>
+                <Table
+                    employees={this.state.filteredEmployees}
+                    sortBy={this.sortBy}
+                />
             </Wrapper>
         )
     }
